@@ -52,12 +52,12 @@ const HeroSection = () => {
           transition={{ duration: 0.8, delay: 0.45 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <a href="#salle" className="bg-gradient-lime text-primary-foreground px-8 py-3.5 rounded-xl font-semibold text-lg hover:opacity-90 transition-opacity shadow-lime">
-            🏋️ Salle de Sport
-          </a>
-          <a href="#stade" className="border border-border bg-surface hover:bg-surface-hover text-foreground px-8 py-3.5 rounded-xl font-semibold text-lg transition-colors">
-            🏟️ Expérience Stade
-          </a>
+          <Link to="/salle" className="bg-gradient-lime text-primary-foreground px-8 py-3.5 rounded-xl font-semibold text-lg hover:opacity-90 transition-opacity shadow-lime">
+            🏋️ Basic-Fit Paris Bastille
+          </Link>
+          <Link to="/stade" className="border border-border bg-surface hover:bg-surface-hover text-foreground px-8 py-3.5 rounded-xl font-semibold text-lg transition-colors">
+            🏟️ Stade de France
+          </Link>
         </motion.div>
       </div>
 
