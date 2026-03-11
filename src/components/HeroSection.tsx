@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowDown } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroGym from "@/assets/hero-gym.jpg";
 
 const HeroSection = () => {
