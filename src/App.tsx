@@ -7,6 +7,8 @@ import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Planning from "./pages/admin/Planning";
 import Flux from "./pages/admin/Flux";
+import Sites from "./pages/admin/Sites";
+import Imprevus from "./pages/admin/Imprevus";
 import DriverRoute from "./pages/driver/Route";
 import Collecte from "./pages/driver/Collecte";
 import Jauge from "./pages/driver/Jauge";
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/admin" element={<Protected role="admin"><AdminDashboard /></Protected>} />
             <Route path="/admin/planning" element={<Protected role="admin"><Planning /></Protected>} />
             <Route path="/admin/flux" element={<Protected role="admin"><Flux /></Protected>} />
+            <Route path="/admin/sites" element={<Protected role="admin"><Sites /></Protected>} />
+            <Route path="/admin/imprevus" element={<Protected role="admin"><Imprevus /></Protected>} />
             <Route path="/driver" element={<Protected role="driver"><DriverRoute /></Protected>} />
             <Route path="/driver/collecte" element={<Protected role="driver"><Collecte /></Protected>} />
             <Route path="/driver/jauge" element={<Protected role="driver"><Jauge /></Protected>} />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, ChevronDown, TrendingUp } from "lucide-react";
+import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { weekPlanning, driverRoutes, clients, trucks } from "@/lib/mockData";
 
@@ -11,6 +12,7 @@ export default function Planning() {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const nav = useNavigate();
 
   const generate = () => {
     setLoading(true);
@@ -19,9 +21,28 @@ export default function Planning() {
 
   return (
     <AdminLayout>
-      <div className="mb-6">
-        <h1 className="text-3xl font-display font-extrabold">Planning & Générateur de tournées</h1>
-        <p className="text-muted-foreground">Optimisation IA par jour et par véhicule</p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-extrabold">Planning & Générateur de tournées</h1>
+          <p className="text-muted-foreground">Optimisation IA par jour et par véhicule</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => nav("/admin/sites")}
+            className="bg-gradient-primary text-white px-6 py-3.5 rounded-2xl font-semibold inline-flex items-center gap-2.5 shadow-soft hover:shadow-glow transition"
+          >
+            <PlusCircle size={20} /> Saisir des sites
+          </motion.button>
+          <button
+            onClick={() => nav("/admin/imprevus")}
+            className="px-5 py-3.5 rounded-2xl border-2 border-danger/30 bg-danger/5 text-danger font-semibold inline-flex items-center gap-2 hover:bg-danger/10 transition"
+          >
+            <AlertTriangle size={18} /> Gérer les imprévus
+            <span className="ml-1 w-2 h-2 rounded-full bg-danger animate-pulse" />
+          </button>
+        </div>
       </div>
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
