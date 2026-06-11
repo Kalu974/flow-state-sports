@@ -6,12 +6,9 @@ import { AuthProvider, useAuth, Role } from "@/lib/auth";
 import Login from "./pages/Login";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Planning from "./pages/admin/Planning";
-import Flux from "./pages/admin/Flux";
 import Sites from "./pages/admin/Sites";
 import Imprevus from "./pages/admin/Imprevus";
 import DriverRoute from "./pages/driver/Route";
-import Collecte from "./pages/driver/Collecte";
-import Jauge from "./pages/driver/Jauge";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
