@@ -1,22 +1,26 @@
 import { motion } from "framer-motion";
-import { Leaf, Truck, CheckCircle2, AlertTriangle, Download } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+import { Leaf, Truck, CheckCircle2, AlertTriangle, Download, Inbox } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useEffect, useState } from "react";
-import { hourlyData, recentActivity, trucks, clients } from "@/lib/mockData";
+import { hourlyData, trucks } from "@/lib/mockData";
 import { toast } from "sonner";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { getSites } from "@/lib/sitesStore";
+import { getActivity, getCounters, timeAgo, useStore } from "@/lib/activityStore";
 
 function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
   const [v, setV] = useState(0);
   useEffect(() => {
     const start = performance.now();
-    const dur = 1200;
+    const dur = 1000;
+    const from = v;
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / dur);
-      setV(Math.round(to * (1 - Math.pow(1 - p, 3))));
+      setV(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))));
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [to]);
   return <span>{v.toLocaleString("fr-FR")}{suffix}</span>;
 }
@@ -35,6 +39,12 @@ function StatCard({ icon: Icon, label, value, tint, suffix, delay }: any) {
 }
 
 export default function AdminDashboard() {
+  const sites = useStore(getSites);
+  const activity = useStore(getActivity);
+  const counters = useStore(getCounters);
+
+  const totalKgToday = activity.reduce((s, a) => s + a.kg, 0);
+
   const exportBluebob = () => {
     toast.loading("Préparation du fichier Bluebob...", { id: "bb" });
     setTimeout(() => {
@@ -43,7 +53,7 @@ export default function AdminDashboard() {
       const a = document.createElement("a");
       a.href = url; a.download = "biocycle-bluebob-export.txt"; a.click();
       URL.revokeObjectURL(url);
-      toast.success("Export Bluebob envoyé ✓", { id: "bb", description: "247 enregistrements transférés" });
+      toast.success("Export Bluebob envoyé ✓", { id: "bb", description: `${activity.length} enregistrements transférés` });
     }, 1400);
   };
 
@@ -61,10 +71,10 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={Leaf} label="Biodéchets aujourd'hui (kg)" value={1980} tint="bg-gradient-primary" delay={0} />
+        <StatCard icon={Leaf} label="Biodéchets aujourd'hui (kg)" value={totalKgToday} tint="bg-gradient-primary" delay={0} />
         <StatCard icon={Truck} label="Camions en circulation" value={4} tint="bg-accent" delay={0.1} suffix=" (3 VL + 1 PL)" />
-        <StatCard icon={CheckCircle2} label="Collectes validées" value={11} tint="bg-secondary" delay={0.2} suffix=" / 15" />
-        <StatCard icon={AlertTriangle} label="Alertes actives" value={2} tint="bg-danger" delay={0.3} />
+        <StatCard icon={CheckCircle2} label="Collectes validées" value={counters.validated} tint="bg-secondary" delay={0.2} suffix={` / ${sites.length}`} />
+        <StatCard icon={AlertTriangle} label="Alertes actives" value={counters.alerts} tint="bg-danger" delay={0.3} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
@@ -101,7 +111,7 @@ export default function AdminDashboard() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
           className="bg-card rounded-2xl p-6 shadow-card border border-border/50">
-          <h3 className="font-display font-bold text-lg mb-4">Positions camions</h3>
+          <h3 className="font-display font-bold text-lg mb-4">Sites & camions — Var</h3>
           <MiniMap />
           <div className="mt-4 space-y-2">
             {trucks.map((t) => (
@@ -114,6 +124,10 @@ export default function AdminDashboard() {
                 <span className="text-xs text-muted-foreground">En route</span>
               </div>
             ))}
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-border/50">
+              <span className="text-muted-foreground">Sites enregistrés</span>
+              <span className="font-semibold text-primary">{sites.length}</span>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -121,49 +135,55 @@ export default function AdminDashboard() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
         className="bg-card rounded-2xl p-6 shadow-card border border-border/50">
         <h3 className="font-display font-bold text-lg mb-4">Activité récente</h3>
-        <div className="space-y-3">
-          {recentActivity.map((a) => (
-            <div key={a.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-secondary/20 flex items-center justify-center">
-                  <CheckCircle2 size={18} className="text-secondary" />
+        {activity.length === 0 ? (
+          <div className="text-center py-10">
+            <Inbox size={32} className="mx-auto text-muted-foreground/60 mb-2" />
+            <div className="text-sm text-muted-foreground">Aucune activité pour le moment</div>
+            <div className="text-xs text-muted-foreground/70 mt-1">Les validations chauffeurs apparaîtront ici en direct.</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activity.map((a) => (
+              <div key={a.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-secondary/20 flex items-center justify-center">
+                    <CheckCircle2 size={18} className="text-secondary" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">{a.driver} <span className="text-muted-foreground font-normal">a validé</span> {a.siteName}</div>
+                    <div className="text-xs text-muted-foreground">{timeAgo(a.time)}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium text-sm">{a.driver} <span className="text-muted-foreground font-normal">a validé</span> {a.client}</div>
-                  <div className="text-xs text-muted-foreground">{a.time}</div>
-                </div>
+                <div className="text-sm font-semibold text-primary">{a.kg} kg</div>
               </div>
-              <div className="text-sm font-semibold text-primary">{a.kg} kg</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </AdminLayout>
   );
 }
 
 function MiniMap() {
-  // Stylized region of Var
-  const pts = trucks.map((t, i) => ({
-    color: t.color,
-    x: 20 + (i * 60) % 200 + Math.random() * 40,
-    y: 30 + (i * 45) % 120,
-    name: t.name,
-  }));
+  const sites = useStore(getSites);
   return (
     <div className="relative w-full h-44 rounded-xl overflow-hidden" style={{ background: "linear-gradient(135deg, #e8f5ed, #d6ecf2)" }}>
       <svg viewBox="0 0 300 180" className="w-full h-full">
         <path d="M20,140 Q60,90 120,110 T220,80 T290,120 L290,170 L20,170 Z" fill="#74C69D33" stroke="#52B788" strokeWidth="1.5" />
         <path d="M40,80 Q100,50 160,70 T280,40" fill="none" stroke="#1A759F55" strokeWidth="1.5" strokeDasharray="3 3" />
-        {pts.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r="10" fill={p.color} opacity="0.25" className="animate-pulse-pin" />
-            <circle cx={p.x} cy={p.y} r="5" fill={p.color} />
-            <text x={p.x + 8} y={p.y + 3} fontSize="9" fill="#1B2D27" fontWeight="600">{p.name}</text>
+        {sites.map((s) => (
+          <g key={s.id}>
+            <circle cx={s.lng} cy={s.lat} r="6" fill="#2D6A4F" opacity="0.25" className="animate-pulse-pin" />
+            <circle cx={s.lng} cy={s.lat} r="3.5" fill="#2D6A4F" stroke="#fff" strokeWidth="1" />
           </g>
         ))}
       </svg>
       <div className="absolute bottom-2 right-2 text-[10px] text-muted-foreground bg-white/70 px-2 py-0.5 rounded">Var · 83</div>
+      {sites.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground/80">
+          Aucun site saisi
+        </div>
+      )}
     </div>
   );
 }

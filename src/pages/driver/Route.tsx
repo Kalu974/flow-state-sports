@@ -1,31 +1,42 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Power, Check, X } from "lucide-react";
+import { Power, Check, X, Inbox } from "lucide-react";
 import { toast } from "sonner";
-import { driverRoutes, clients } from "@/lib/mockData";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
+import { getSites, SavedSite } from "@/lib/sitesStore";
+import { addActivity, addReplan, useStore } from "@/lib/activityStore";
 
 export default function DriverRoute() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const initial = driverRoutes.vl1.map((id) => clients.find((c) => c.id === id)!);
-  const [stops, setStops] = useState(initial);
+  const sites = useStore(getSites);
+  const [removed, setRemoved] = useState<string[]>([]);
 
-  const handleAction = (id: string, accepted: boolean) => {
-    const stop = stops.find((s) => s.id === id);
-    if (!stop) return;
+  const stops: SavedSite[] = useMemo(
+    () => sites.filter((s) => !removed.includes(s.id)),
+    [sites, removed]
+  );
+
+  const handleAction = (s: SavedSite, accepted: boolean) => {
     if (accepted) {
-      toast.success("Collecte validée", { description: `${stop.name} · ${stop.predictedKg} kg` });
+      addActivity({ driver: user?.name || "Chauffeur", siteName: s.name, kg: s.estimatedKg });
+      toast.success("Collecte validée", { description: `${s.name} · ${s.estimatedKg} kg` });
     } else {
-      toast("Site passé", { description: stop.name });
+      addReplan({
+        siteId: s.id,
+        name: s.name,
+        address: s.address,
+        city: s.city,
+        reason: "Site passé par le chauffeur",
+      });
+      toast("Site à replanifier", { description: s.name });
     }
-    setTimeout(() => setStops((arr) => arr.filter((s) => s.id !== id)), 50);
+    setTimeout(() => setRemoved((r) => [...r, s.id]), 50);
   };
 
   return (
     <div className="min-h-screen bg-background pb-10 max-w-md mx-auto flex flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-5 py-4 flex items-center justify-between">
         <div>
           <div className="text-[11px] text-muted-foreground uppercase tracking-wider">Chauffeur</div>
@@ -40,11 +51,10 @@ export default function DriverRoute() {
         </button>
       </header>
 
-      {/* Liste collecte */}
       <section className="px-4 mt-5 flex-1">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-bold">File de collecte</h2>
-          <span className="text-xs text-muted-foreground">{stops.length} arrêts</span>
+          <span className="text-xs text-muted-foreground">{stops.length} arrêt{stops.length > 1 ? "s" : ""}</span>
         </div>
 
         <div className="space-y-3">
@@ -65,18 +75,18 @@ export default function DriverRoute() {
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-sm truncate">{s.name}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    Prédiction IA : <span className="text-primary font-semibold">{s.predictedKg} kg</span> (±10%)
+                    {s.city} · Prédiction IA : <span className="text-primary font-semibold">{s.estimatedKg} kg</span>
                   </div>
                 </div>
                 <button
-                  onClick={() => handleAction(s.id, true)}
+                  onClick={() => handleAction(s, true)}
                   aria-label="Valider"
                   className="w-11 h-11 rounded-2xl bg-secondary/15 text-secondary hover:bg-secondary hover:text-white flex items-center justify-center transition active:scale-95"
                 >
                   <Check size={20} strokeWidth={3} />
                 </button>
                 <button
-                  onClick={() => handleAction(s.id, false)}
+                  onClick={() => handleAction(s, false)}
                   aria-label="Passer"
                   className="w-11 h-11 rounded-2xl bg-danger/10 text-danger hover:bg-danger hover:text-white flex items-center justify-center transition active:scale-95"
                 >
@@ -92,9 +102,11 @@ export default function DriverRoute() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-12 rounded-3xl bg-card border border-border/50"
             >
-              <div className="text-5xl mb-2">🎉</div>
-              <div className="font-display font-bold">Tournée terminée</div>
-              <div className="text-sm text-muted-foreground">Tous les sites ont été traités</div>
+              <Inbox size={36} className="mx-auto text-muted-foreground/60 mb-2" />
+              <div className="font-display font-bold">Aucun site à collecter</div>
+              <div className="text-sm text-muted-foreground px-6 mt-1">
+                Les nouveaux sites saisis par l'administrateur apparaîtront ici.
+              </div>
             </motion.div>
           )}
         </div>
