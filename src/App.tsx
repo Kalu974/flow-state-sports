@@ -30,12 +30,9 @@ const App = () => (
             <Route path="/" element={<Login />} />
             <Route path="/admin" element={<Protected role="admin"><AdminDashboard /></Protected>} />
             <Route path="/admin/planning" element={<Protected role="admin"><Planning /></Protected>} />
-            <Route path="/admin/flux" element={<Protected role="admin"><Flux /></Protected>} />
             <Route path="/admin/sites" element={<Protected role="admin"><Sites /></Protected>} />
             <Route path="/admin/imprevus" element={<Protected role="admin"><Imprevus /></Protected>} />
             <Route path="/driver" element={<Protected role="driver"><DriverRoute /></Protected>} />
-            <Route path="/driver/collecte" element={<Protected role="driver"><Collecte /></Protected>} />
-            <Route path="/driver/jauge" element={<Protected role="driver"><Jauge /></Protected>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

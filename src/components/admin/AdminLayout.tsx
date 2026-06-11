@@ -1,13 +1,12 @@
 import { ReactNode, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarRange, Truck, Bell, LogOut, Menu, X, Leaf } from "lucide-react";
+import { LayoutDashboard, CalendarRange, Bell, LogOut, Menu, X, Leaf } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 
 const nav = [
   { to: "/admin", icon: LayoutDashboard, label: "Tableau de bord", end: true },
   { to: "/admin/planning", icon: CalendarRange, label: "Planning & Tournées" },
-  { to: "/admin/flux", icon: Truck, label: "Flux entrants" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
