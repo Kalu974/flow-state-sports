@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle, MapPin, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { weekPlanning, driverRoutes, clients, trucks } from "@/lib/mockData";
+import { getSites } from "@/lib/sitesStore";
 
 const tintForTruck = (t: string) => trucks.find((x) => x.name === t)?.color || "#52B788";
 const tolColor = { good: "bg-secondary/20 text-secondary", borderline: "bg-orange-500/20 text-orange-600", outlier: "bg-danger/20 text-danger" };
@@ -12,6 +13,8 @@ export default function Planning() {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [sitesOpen, setSitesOpen] = useState(false);
+  const [savedSites] = useState(() => getSites());
   const nav = useNavigate();
 
   const generate = () => {
@@ -53,6 +56,67 @@ export default function Planning() {
           <div className="text-xs text-muted-foreground">Prédictions ajustées +20%</div>
         </div>
       </motion.div>
+
+      {/* Sites enregistrés - dropdown */}
+      <div className="mb-6 bg-card rounded-2xl shadow-card border border-border/50 overflow-hidden">
+        <button
+          onClick={() => setSitesOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <MapPin size={18} className="text-primary" />
+            </div>
+            <div className="text-left">
+              <div className="font-display font-bold">Sites de collecte enregistrés</div>
+              <div className="text-xs text-muted-foreground">
+                {savedSites.length} site{savedSites.length > 1 ? "s" : ""} dans la base
+              </div>
+            </div>
+          </div>
+          <ChevronDown className={`transition ${sitesOpen ? "rotate-180" : ""}`} size={18} />
+        </button>
+        <AnimatePresence>
+          {sitesOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-border/50"
+            >
+              {savedSites.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <Inbox size={32} className="mx-auto text-muted-foreground/60 mb-2" />
+                  <div className="text-sm text-muted-foreground">Aucun site enregistré pour le moment</div>
+                  <button
+                    onClick={() => nav("/admin/sites")}
+                    className="mt-3 text-xs font-semibold text-primary hover:underline"
+                  >
+                    + Saisir un premier site
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {savedSites.map((s) => (
+                    <div key={s.id} className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-muted/30 transition">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm truncate">{s.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {s.category} · {s.address}, {s.city}
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                        {s.slotStart} → {s.slotEnd}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
 
       {/* Week calendar */}
       <div className="bg-card rounded-2xl p-6 shadow-card border border-border/50 mb-8">
