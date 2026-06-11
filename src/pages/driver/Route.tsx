@@ -1,30 +1,21 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Power, Check, X, Truck } from "lucide-react";
+import { Power, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import DriverNav from "@/components/driver/DriverNav";
 import { driverRoutes, clients } from "@/lib/mockData";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
-
-const MAX_KG = 750;
-const MAX_M3 = 20;
 
 export default function DriverRoute() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const initial = driverRoutes.vl1.map((id) => clients.find((c) => c.id === id)!);
   const [stops, setStops] = useState(initial);
-  const [loadKg, setLoadKg] = useState(317);
-
-  const loadM3 = +(loadKg / MAX_KG * MAX_M3).toFixed(1);
-  const pctKg = Math.min(100, (loadKg / MAX_KG) * 100);
 
   const handleAction = (id: string, accepted: boolean) => {
     const stop = stops.find((s) => s.id === id);
     if (!stop) return;
     if (accepted) {
-      setLoadKg((v) => Math.min(MAX_KG, v + stop.predictedKg));
       toast.success("Collecte validée", { description: `${stop.name} · ${stop.predictedKg} kg` });
     } else {
       toast("Site passé", { description: stop.name });
@@ -32,10 +23,8 @@ export default function DriverRoute() {
     setTimeout(() => setStops((arr) => arr.filter((s) => s.id !== id)), 50);
   };
 
-  const barColor = pctKg < 70 ? "bg-gradient-primary" : pctKg < 90 ? "bg-orange-500" : "bg-danger";
-
   return (
-    <div className="min-h-screen bg-background pb-24 max-w-md mx-auto flex flex-col">
+    <div className="min-h-screen bg-background pb-10 max-w-md mx-auto flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border px-5 py-4 flex items-center justify-between">
         <div>
@@ -50,36 +39,6 @@ export default function DriverRoute() {
           <Power size={20} />
         </button>
       </header>
-
-      {/* Bandeau capacité */}
-      <section className="mx-4 mt-4 rounded-3xl bg-gradient-to-br from-card to-muted/40 border border-border/60 shadow-card p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Truck size={18} className="text-primary" />
-          <div className="font-display font-bold text-sm">État du camion · VL1</div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="p-3 rounded-2xl bg-background/60">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Volume</div>
-            <div className="font-display font-extrabold text-xl">
-              {loadM3} <span className="text-muted-foreground text-sm font-bold">/ {MAX_M3} m³</span>
-            </div>
-          </div>
-          <div className="p-3 rounded-2xl bg-background/60">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Poids</div>
-            <div className="font-display font-extrabold text-xl">
-              {loadKg} <span className="text-muted-foreground text-sm font-bold">/ {MAX_KG} kg</span>
-            </div>
-          </div>
-        </div>
-        <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-          <motion.div
-            className={`h-full ${barColor} rounded-full`}
-            animate={{ width: `${pctKg}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-        </div>
-        <div className="text-right text-[11px] mt-1.5 font-semibold text-muted-foreground">{Math.round(pctKg)}% chargé</div>
-      </section>
 
       {/* Liste collecte */}
       <section className="px-4 mt-5 flex-1">
@@ -140,8 +99,6 @@ export default function DriverRoute() {
           )}
         </div>
       </section>
-
-      <DriverNav />
     </div>
   );
 }

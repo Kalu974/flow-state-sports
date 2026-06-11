@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, MapPin, Building2, Clock, Sun, Check } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { addSite } from "@/lib/sitesStore";
 
 const VAR_CITIES = [
   "Toulon", "Hyères", "La Seyne-sur-Mer", "Six-Fours-les-Plages", "Draguignan",
@@ -33,6 +34,7 @@ export default function Sites() {
       toast.error("Veuillez remplir tous les champs obligatoires");
       return;
     }
+    addSite(form);
     toast.success("Site ajouté avec succès", {
       description: `${form.name} (${form.city}, 83) intégré au planning IA`,
     });

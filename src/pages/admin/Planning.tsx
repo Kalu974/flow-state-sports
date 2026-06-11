@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle, MapPin, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { weekPlanning, driverRoutes, clients, trucks } from "@/lib/mockData";
+import { getSites } from "@/lib/sitesStore";
 
 const tintForTruck = (t: string) => trucks.find((x) => x.name === t)?.color || "#52B788";
 const tolColor = { good: "bg-secondary/20 text-secondary", borderline: "bg-orange-500/20 text-orange-600", outlier: "bg-danger/20 text-danger" };
@@ -12,6 +13,8 @@ export default function Planning() {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  const [sitesOpen, setSitesOpen] = useState(false);
+  const [savedSites] = useState(() => getSites());
   const nav = useNavigate();
 
   const generate = () => {
