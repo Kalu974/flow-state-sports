@@ -1,35 +1,23 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertTriangle, ArrowLeft, ArrowRight, Truck, CheckCircle2, Clock, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, RefreshCw, Inbox, MapPin, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import AdminLayout from "@/components/admin/AdminLayout";
-
-type Incident = {
-  id: string;
-  truck: string;
-  driver: string;
-  time: string;
-  message: string;
-  severity: "high" | "medium" | "info";
-  resolved?: boolean;
-};
-
-const INCIDENTS: Incident[] = [
-  { id: "i1", truck: "VL1", driver: "Marc Dubois", time: "il y a 2 min", message: "Camion plein plus vite que prévu — surcharge évitée", severity: "high" },
-  { id: "i2", truck: "VL3", driver: "Thomas Riva", time: "il y a 8 min", message: "Embouteillage A57, retard estimé 15 min", severity: "medium" },
-  { id: "i3", truck: "PL1", driver: "Karim Belkacem", time: "il y a 14 min", message: "Client fermé — collecte reportée", severity: "info", resolved: true },
-];
-
-const REROUTED = [
-  { client: "Le Sud", from: "VL1", to: "VL2", kg: 75 },
-  { client: "Restaurant l'Ancre", from: "VL1", to: "VL2", kg: 105 },
-  { client: "Brasserie du Cours", from: "VL1", to: "PL1", kg: 110 },
-];
+import { getReplan, removeReplan, useStore, timeAgo } from "@/lib/activityStore";
 
 export default function Imprevus() {
   const nav = useNavigate();
-  const [selected, setSelected] = useState<string>("i1");
-  const current = INCIDENTS.find((i) => i.id === selected)!;
+  const replan = useStore(getReplan);
+
+  const handleReplan = (id: string, name: string) => {
+    removeReplan(id);
+    toast.success("Site replanifié", { description: `${name} a été réintégré au planning IA` });
+  };
+
+  const handleDismiss = (id: string) => {
+    removeReplan(id);
+    toast("Site retiré de la liste");
+  };
 
   return (
     <AdminLayout>
@@ -39,119 +27,66 @@ export default function Imprevus() {
         </button>
         <div>
           <h1 className="text-3xl font-display font-extrabold">Gestion des imprévus</h1>
-          <p className="text-muted-foreground">Alertes terrain & réajustement IA en temps réel</p>
+          <p className="text-muted-foreground">Sites passés par les chauffeurs & à replanifier</p>
         </div>
-        <span className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-danger/15 text-danger text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-danger animate-pulse" /> 2 incidents actifs
+        <span className={`ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${replan.length > 0 ? "bg-danger/15 text-danger" : "bg-secondary/15 text-secondary"}`}>
+          <span className={`w-2 h-2 rounded-full ${replan.length > 0 ? "bg-danger animate-pulse" : "bg-secondary"}`} />
+          {replan.length} site{replan.length > 1 ? "s" : ""} à replanifier
         </span>
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Liste des notifications */}
-        <div className="lg:col-span-2 bg-card rounded-3xl p-5 shadow-card border border-border/50">
-          <h2 className="font-display font-bold mb-4 flex items-center gap-2">
-            <AlertTriangle size={18} className="text-orange-500" /> Notifications terrain
-          </h2>
-          <div className="space-y-2.5">
-            {INCIDENTS.map((i) => {
-              const sevColor = i.severity === "high" ? "border-danger/40 bg-danger/5"
-                : i.severity === "medium" ? "border-orange-400/40 bg-orange-500/5"
-                : "border-border bg-muted/30";
-              const active = selected === i.id;
-              return (
-                <motion.button
-                  key={i.id}
-                  whileHover={{ x: 4 }}
-                  onClick={() => setSelected(i.id)}
-                  className={`w-full text-left p-4 rounded-2xl border-2 transition ${sevColor} ${active ? "ring-2 ring-primary/40" : ""}`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Truck size={16} className="text-primary" />
-                      <span className="font-bold text-sm">{i.truck}</span>
-                      <span className="text-xs text-muted-foreground">· {i.driver}</span>
-                    </div>
-                    {i.resolved ? (
-                      <CheckCircle2 size={16} className="text-secondary" />
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Clock size={10} /> {i.time}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm">{i.message}</div>
-                </motion.button>
-              );
-            })}
+      <div className="bg-card rounded-3xl p-6 shadow-card border border-border/50">
+        <h2 className="font-display font-bold mb-4 flex items-center gap-2">
+          <AlertTriangle size={18} className="text-orange-500" /> Sites à replanifier
+        </h2>
+
+        {replan.length === 0 ? (
+          <div className="text-center py-14">
+            <Inbox size={40} className="mx-auto text-muted-foreground/50 mb-3" />
+            <div className="font-display font-bold text-lg">Aucun site à replanifier</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Quand un chauffeur passe un site (✕), il apparaît ici pour réintégration.
+            </div>
           </div>
-        </div>
-
-        {/* Détail réajustement */}
-        <div className="lg:col-span-3 space-y-5">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selected}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl p-6 border border-primary/20"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-primary flex items-center justify-center">
-                  <Zap className="text-white" size={20} />
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Algorithme de réajustement</div>
-                  <div className="font-display font-bold text-lg">Incident {current.truck} — basculement automatique</div>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {current.message}. L'IA a recalculé les itinéraires en <strong className="text-primary">1.4s</strong> et basculé
-                les clients restants vers les véhicules disponibles dans la zone.
-              </p>
-            </motion.div>
-
-            <motion.div
-              key={selected + "-list"}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-card rounded-3xl p-6 shadow-card border border-border/50"
-            >
-              <h3 className="font-display font-bold mb-4">Clients réaffectés</h3>
-              <div className="space-y-2.5">
-                {REROUTED.map((r, idx) => (
-                  <motion.div
-                    key={r.client}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: idx * 0.08 }}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/40"
+        ) : (
+          <div className="space-y-2.5">
+            <AnimatePresence initial={false}>
+              {replan.map((r) => (
+                <motion.div
+                  key={r.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: 60 }}
+                  className="flex items-center gap-3 p-4 rounded-2xl border-2 border-danger/30 bg-danger/5"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-danger/15 text-danger flex items-center justify-center shrink-0">
+                    <MapPin size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm truncate">{r.name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {r.address}, {r.city} · {timeAgo(r.time)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleReplan(r.id, r.name)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-primary text-white text-xs font-semibold hover:shadow-glow transition"
                   >
-                    <div className="flex-1 font-semibold">{r.client}</div>
-                    <span className="px-2.5 py-1 rounded-lg bg-danger/15 text-danger text-xs font-bold">{r.from}</span>
-                    <ArrowRight size={16} className="text-muted-foreground" />
-                    <span className="px-2.5 py-1 rounded-lg bg-secondary/20 text-secondary text-xs font-bold">{r.to}</span>
-                    <span className="text-sm font-bold text-primary w-16 text-right">{r.kg} kg</span>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="mt-5 grid grid-cols-3 gap-3 text-center text-xs">
-                <div className="p-3 rounded-xl bg-muted">
-                  <div className="font-bold text-lg text-primary">3</div>
-                  <div className="text-muted-foreground">clients basculés</div>
-                </div>
-                <div className="p-3 rounded-xl bg-muted">
-                  <div className="font-bold text-lg text-primary">290 kg</div>
-                  <div className="text-muted-foreground">tonnage transféré</div>
-                </div>
-                <div className="p-3 rounded-xl bg-muted">
-                  <div className="font-bold text-lg text-secondary">0</div>
-                  <div className="text-muted-foreground">collecte annulée</div>
-                </div>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                    <RefreshCw size={14} /> Replanifier
+                  </button>
+                  <button
+                    onClick={() => handleDismiss(r.id)}
+                    aria-label="Retirer"
+                    className="p-2 rounded-xl hover:bg-danger/15 text-muted-foreground hover:text-danger transition"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

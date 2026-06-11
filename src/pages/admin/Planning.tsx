@@ -3,23 +3,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Loader2, ChevronDown, TrendingUp, PlusCircle, AlertTriangle, MapPin, Inbox } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { weekPlanning, driverRoutes, clients, trucks } from "@/lib/mockData";
-import { getSites } from "@/lib/sitesStore";
+import { trucks } from "@/lib/mockData";
+import { getSites, SavedSite } from "@/lib/sitesStore";
+import { useStore } from "@/lib/activityStore";
 
-const tintForTruck = (t: string) => trucks.find((x) => x.name === t)?.color || "#52B788";
-const tolColor = { good: "bg-secondary/20 text-secondary", borderline: "bg-orange-500/20 text-orange-600", outlier: "bg-danger/20 text-danger" };
+const MAX_KG = 750;
+
+type Tour = { truck: typeof trucks[number]; stops: SavedSite[]; totalKg: number };
+
+function generateTours(sites: SavedSite[]): Tour[] {
+  if (sites.length === 0) return [];
+  const sorted = [...sites].sort((a, b) => b.estimatedKg - a.estimatedKg);
+  const tours: Tour[] = [];
+  let current: Tour | null = null;
+  let truckIdx = 0;
+  for (const s of sorted) {
+    if (!current || current.totalKg + s.estimatedKg > MAX_KG) {
+      if (truckIdx >= trucks.length) break;
+      current = { truck: trucks[truckIdx++], stops: [], totalKg: 0 };
+      tours.push(current);
+    }
+    current.stops.push(s);
+    current.totalKg += s.estimatedKg;
+  }
+  return tours;
+}
 
 export default function Planning() {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [sitesOpen, setSitesOpen] = useState(false);
-  const [savedSites] = useState(() => getSites());
+  const savedSites = useStore(getSites);
   const nav = useNavigate();
 
+  const tours = generateTours(savedSites);
+
   const generate = () => {
+    if (savedSites.length === 0) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); setGenerated(true); }, 2000);
+    setTimeout(() => { setLoading(false); setGenerated(true); }, 1600);
   };
 
   return (
@@ -27,7 +50,7 @@ export default function Planning() {
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-extrabold">Planning & Générateur de tournées</h1>
-          <p className="text-muted-foreground">Optimisation IA par jour et par véhicule</p>
+          <p className="text-muted-foreground">Optimisation IA — camions max {MAX_KG} kg</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <motion.button
@@ -43,7 +66,6 @@ export default function Planning() {
             className="px-5 py-3.5 rounded-2xl border-2 border-danger/30 bg-danger/5 text-danger font-semibold inline-flex items-center gap-2 hover:bg-danger/10 transition"
           >
             <AlertTriangle size={18} /> Gérer les imprévus
-            <span className="ml-1 w-2 h-2 rounded-full bg-danger animate-pulse" />
           </button>
         </div>
       </div>
@@ -53,11 +75,10 @@ export default function Planning() {
         <TrendingUp className="text-primary" />
         <div>
           <div className="font-semibold text-sm">📈 Période haute (juin → septembre)</div>
-          <div className="text-xs text-muted-foreground">Prédictions ajustées +20%</div>
+          <div className="text-xs text-muted-foreground">Prédictions ajustées +20% sur les sites saisonniers</div>
         </div>
       </motion.div>
 
-      {/* Sites enregistrés - dropdown */}
       <div className="mb-6 bg-card rounded-2xl shadow-card border border-border/50 overflow-hidden">
         <button
           onClick={() => setSitesOpen((v) => !v)}
@@ -105,8 +126,9 @@ export default function Planning() {
                           {s.category} · {s.address}, {s.city}
                         </div>
                       </div>
-                      <div className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                        {s.slotStart} → {s.slotEnd}
+                      <div className="flex items-center gap-3 whitespace-nowrap">
+                        <span className="text-[11px] font-bold text-primary">{s.estimatedKg} kg</span>
+                        <span className="text-xs text-muted-foreground">{s.slotStart}→{s.slotEnd}</span>
                       </div>
                     </div>
                   ))}
@@ -117,47 +139,26 @@ export default function Planning() {
         </AnimatePresence>
       </div>
 
-
-      {/* Week calendar */}
-      <div className="bg-card rounded-2xl p-6 shadow-card border border-border/50 mb-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {weekPlanning.map((d) => (
-            <div key={d.day} className="border border-border rounded-xl p-3 hover:border-primary/40 transition">
-              <div className="font-display font-bold text-lg mb-2">{d.day}</div>
-              <div className="space-y-1.5">
-                {d.trucks.map((t) => (
-                  <div key={t.truck} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg"
-                    style={{ background: tintForTruck(t.truck) + "22" }}>
-                    <span className="font-semibold" style={{ color: tintForTruck(t.truck) }}>{t.truck}</span>
-                    <span className="text-foreground/80">{t.kg} kg</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Generate button */}
       <div className="text-center mb-8">
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-          onClick={generate} disabled={loading}
-          className="bg-gradient-primary text-white px-8 py-4 rounded-2xl font-semibold inline-flex items-center gap-3 shadow-soft hover:shadow-glow disabled:opacity-70">
+          onClick={generate} disabled={loading || savedSites.length === 0}
+          className="bg-gradient-primary text-white px-8 py-4 rounded-2xl font-semibold inline-flex items-center gap-3 shadow-soft hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed">
           {loading ? <Loader2 className="animate-spin" /> : <Sparkles />}
           {loading ? "L'IA optimise vos tournées..." : "Générer les tournées"}
         </motion.button>
+        {savedSites.length === 0 && (
+          <p className="text-xs text-muted-foreground mt-3">Saisis au moins un site pour générer une tournée.</p>
+        )}
       </div>
 
-      {/* Generated cards */}
       <AnimatePresence>
-        {generated && (
+        {generated && tours.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {trucks.map((t) => {
-              const cIds = driverRoutes[t.id] || [];
-              const cs = cIds.map((id) => clients.find((c) => c.id === id)!);
-              const totalKg = cs.reduce((s, c) => s + c.predictedKg, 0);
+            {tours.map((tour) => {
+              const t = tour.truck;
               const expanded = openCard === t.id;
+              const fillPct = Math.round((tour.totalKg / MAX_KG) * 100);
               return (
                 <motion.div key={t.id} layout
                   onClick={() => setOpenCard(expanded ? null : t.id)}
@@ -168,17 +169,28 @@ export default function Planning() {
                         style={{ background: t.color }}>{t.name}</div>
                       <div>
                         <div className="font-semibold">{t.driver}</div>
-                        <div className="text-xs text-muted-foreground">{t.type} · max {t.maxKg} kg</div>
+                        <div className="text-xs text-muted-foreground">{t.type} · max {MAX_KG} kg</div>
                       </div>
                     </div>
                     <ChevronDown className={`transition ${expanded ? "rotate-180" : ""}`} size={18} />
                   </div>
+
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Remplissage</span>
+                      <span className="font-bold" style={{ color: t.color }}>{fillPct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full transition-all" style={{ width: `${fillPct}%`, background: t.color }} />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="p-2 rounded-lg bg-muted">
-                      <div className="font-bold text-base">{cs.length}</div><div className="text-muted-foreground">arrêts</div>
+                      <div className="font-bold text-base">{tour.stops.length}</div><div className="text-muted-foreground">arrêt{tour.stops.length > 1 ? "s" : ""}</div>
                     </div>
                     <div className="p-2 rounded-lg bg-muted">
-                      <div className="font-bold text-base">{totalKg} kg</div><div className="text-muted-foreground">estimés</div>
+                      <div className="font-bold text-base">{tour.totalKg} kg</div><div className="text-muted-foreground">estimés</div>
                     </div>
                     <div className="p-2 rounded-lg bg-muted">
                       <div className="font-bold text-base">06h30</div><div className="text-muted-foreground">départ</div>
@@ -188,16 +200,13 @@ export default function Planning() {
                     {expanded && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="mt-4 space-y-2 overflow-hidden">
-                        {cs.map((c, i) => (
+                        {tour.stops.map((c, i) => (
                           <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center">{i + 1}</span>
-                              <span className="font-medium">{c.name}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs w-5 h-5 shrink-0 rounded-full bg-primary text-white flex items-center justify-center">{i + 1}</span>
+                              <span className="font-medium truncate">{c.name}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${tolColor[c.tolerance]}`}>{c.tolerance}</span>
-                              <span className="text-xs font-semibold">{c.predictedKg} kg</span>
-                            </div>
+                            <span className="text-xs font-semibold text-primary whitespace-nowrap">{c.estimatedKg} kg</span>
                           </div>
                         ))}
                       </motion.div>
