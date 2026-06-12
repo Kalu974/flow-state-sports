@@ -6,27 +6,20 @@ export type SavedSite = {
   category: string;
   address: string;
   city: string;
-  slotStart: string;
-  slotEnd: string;
+  hasSlot: boolean;
+  slotStart?: string;
+  slotEnd?: string;
   seasonal: boolean;
+  bins: number;
   estimatedKg: number;
-  lat: number; // 0..100 normalized within Var map viewBox
+  lat: number;
   lng: number;
   createdAt: number;
 };
 
 const KEY = "biocycle.sites";
+const KG_PER_BIN = 24;
 
-const kgForCategory = (cat: string): number => {
-  const c = cat.toLowerCase();
-  if (c.includes("hôtel") || c.includes("hotel")) return 120 + Math.round(Math.random() * 80);
-  if (c.includes("école") || c.includes("cantine")) return 150 + Math.round(Math.random() * 90);
-  if (c.includes("supermarché")) return 200 + Math.round(Math.random() * 120);
-  if (c.includes("fast")) return 90 + Math.round(Math.random() * 60);
-  return 60 + Math.round(Math.random() * 80);
-};
-
-// approximate coords per city in normalized map space (0-300 x 0-180 viewBox used in MiniMap)
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "Toulon": { lng: 135, lat: 130 },
   "Hyères": { lng: 190, lat: 135 },
@@ -55,15 +48,15 @@ export const getSites = (): SavedSite[] => {
 };
 
 export const addSite = (
-  site: Omit<SavedSite, "id" | "createdAt" | "estimatedKg" | "lat" | "lng">
+  input: Omit<SavedSite, "id" | "createdAt" | "estimatedKg" | "lat" | "lng">
 ): SavedSite => {
   const list = getSites();
-  const base = CITY_COORDS[site.city] || { lng: 150, lat: 110 };
+  const base = CITY_COORDS[input.city] || { lng: 150, lat: 110 };
   const s: SavedSite = {
-    ...site,
+    ...input,
     id: crypto.randomUUID(),
     createdAt: Date.now(),
-    estimatedKg: Math.round(kgForCategory(site.category) * (site.seasonal ? 1.2 : 1)),
+    estimatedKg: Math.round(input.bins * KG_PER_BIN * (input.seasonal ? 1.2 : 1)),
     lat: base.lat + (Math.random() - 0.5) * 14,
     lng: base.lng + (Math.random() - 0.5) * 14,
   };
@@ -71,4 +64,10 @@ export const addSite = (
   localStorage.setItem(KEY, JSON.stringify(list));
   emitChange();
   return s;
+};
+
+export const removeSite = (id: string) => {
+  const list = getSites().filter((s) => s.id !== id);
+  localStorage.setItem(KEY, JSON.stringify(list));
+  emitChange();
 };
